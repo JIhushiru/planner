@@ -1,0 +1,98 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://air-quality-api.open-meteo.com https://geocoding-api.open-meteo.com; media-src 'self' data: blob:">
+<title>Planner</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app" class="app">
+  <header class="topbar">
+    <button id="btnSidebar" class="icon-btn" data-icon="panelLeft" title="Show or hide the sidebar  [" aria-label="Toggle sidebar"></button>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true">
+        <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs>
+        <rect x="1" y="1" width="30" height="30" rx="7.5" fill="url(#logoGrad)"/>
+        <rect x="6.5" y="8.5" width="19" height="17" rx="3" fill="#fff"/>
+        <path d="M6.5 11.5a3 3 0 0 1 3-3h13a3 3 0 0 1 3 3v1.9h-19z" fill="#FF6356"/>
+        <path d="M11.6 19.2l3 3 5.8-5.8" fill="none" stroke="#4F46E5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Planner</span>
+    </div>
+    <button id="btnToday" class="btn" title="Go to today  (T)">Today</button>
+    <div class="nav-arrows">
+      <button id="btnPrev" class="icon-btn" data-icon="chevronLeft" title="Previous  (←)" aria-label="Previous"></button>
+      <button id="btnNext" class="icon-btn" data-icon="chevronRight" title="Next  (→)" aria-label="Next"></button>
+    </div>
+    <h1 id="periodTitle" class="period"></h1>
+    <div class="spacer"></div>
+    <div class="seg" id="viewSeg" role="tablist" aria-label="Calendar view">
+      <button data-view="day" title="Day  (D)">Day</button>
+      <button data-view="week" title="Week  (W)">Week</button>
+      <button data-view="month" title="Month  (M)">Month</button>
+    </div>
+    <button id="btnNew" class="btn primary" data-icon="plus" data-size="16" title="New event  (N)">New event</button>
+    <button id="btnHelp" class="icon-btn" data-icon="keyboard" title="Keyboard shortcuts  (?)" aria-label="Keyboard shortcuts"></button>
+    <button id="btnSettings" class="icon-btn" data-icon="settings" title="Settings  (Ctrl+,)" aria-label="Settings"></button>
+    <button id="btnPanel" class="icon-btn" data-icon="panelRight" title="Show or hide the right panel  ]" aria-label="Toggle right panel"></button>
+  </header>
+
+  <div class="body">
+    <aside class="sidebar" id="sidebar">
+      <div id="miniCal" class="mini"></div>
+      <section class="side-sec">
+        <div class="side-h"><span>Health</span></div>
+        <div id="healthLink"></div>
+      </section>
+      <section class="side-sec" hidden>
+        <div class="side-h"><span>Plans</span></div>
+        <div id="plansList"></div>
+      </section>
+      <section class="side-sec">
+        <div class="side-h"><span>Upcoming</span></div>
+        <div id="upcoming"></div>
+      </section>
+      <section class="side-sec">
+        <div class="side-h"><span>Categories</span><button class="linkish small" id="btnEditCats">Edit</button></div>
+        <div id="catList"></div>
+      </section>
+    </aside>
+
+    <main class="main" id="main"></main>
+
+    <aside class="panel" id="panel">
+      <!-- Each card sits in a slot with a drag handle; the order is saved in settings.panelOrder. -->
+      <div class="panel-slot" data-card="now"><button class="card-grip" data-icon="grip" data-size="14" title="Drag to move this card (or focus and use the arrow keys)" aria-label="Move the Today card"></button><section id="nowCard" class="card now-card"></section></div>
+      <div class="panel-slot" data-card="health"><button class="card-grip" data-icon="grip" data-size="14" title="Drag to move this card (or focus and use the arrow keys)" aria-label="Move the Health card"></button><section id="healthCard" class="card health-card"></section></div>
+      <div class="panel-slot" data-card="weather"><button class="card-grip" data-icon="grip" data-size="14" title="Drag to move this card (or focus and use the arrow keys)" aria-label="Move the Jogging weather card"></button><section id="weatherCard" class="card weather-card"></section></div>
+      <div class="panel-slot" data-card="study"><button class="card-grip" data-icon="grip" data-size="14" title="Drag to move this card (or focus and use the arrow keys)" aria-label="Move the Study card"></button><section id="studyCard" class="card study-card" hidden></section></div>
+      <div class="panel-slot" data-card="timer"><button class="card-grip" data-icon="grip" data-size="14" title="Drag to move this card (or focus and use the arrow keys)" aria-label="Move the Focus timer card"></button><section id="pomoCard" class="card pomo-card"></section></div>
+      <div class="panel-slot" data-card="tasks"><button class="card-grip" data-icon="grip" data-size="14" title="Drag to move this card (or focus and use the arrow keys)" aria-label="Move the Tasks card"></button><section id="tasksCard" class="card tasks-card"></section></div>
+    </aside>
+  </div>
+</div>
+<div id="modalRoot"></div>
+<div id="toastRoot" class="toasts" aria-live="polite"></div>
+
+<script src="js/util.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/host.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/seed.local.js"></script>
+<script src="js/store.js"></script>
+<script src="js/health-core.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/plans.js"></script>
+<script src="js/health.js"></script>
+<script src="js/pomodoro.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
