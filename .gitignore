@@ -1,0 +1,10 @@
+CLAUDE.md
+# Personal content (study plans, notes) stays on this PC; the exe still embeds it.
+*.local.js
+bin/
+obj/
+dist/
+*.user
+.vs/
+# Previews written by tools/make_icon.py; only planner.ico is needed to build.
+assets/*.png
