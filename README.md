@@ -11,9 +11,9 @@ Leave the exe where it is, because the pin points at this file. Rebuilding repla
 
 ## What it does
 
-- **Calendar**: day, week and month views. Drag across empty time to add an event, drag a block to move it, drag its bottom edge to change the end time. Ctrl + scroll zooms the day and week views.
+- **Calendar**: day, week and month views. Drag across empty time to add an event, drag a block to move it, drag its bottom edge to change the end time. Ctrl + scroll zooms the day and week views, and the **24h** button (or **F**) fits the whole day, 12 AM to midnight, on screen without scrolling.
 - **Repeating events**: daily, weekdays, weekly, monthly, yearly or custom, with an optional end date. Changing one occurrence asks whether it applies to this event, this and following, or all.
-- **Reminders**: Windows notifications before events, even while Planner sits in the tray.
+- **Reminders**: Windows notifications and a chime before events and study sessions, even while Planner sits in the tray. Turn the chime off in Settings → App and data.
 - **Focus timer**: 25 / 5 / 15 minute Pomodoro with chimes, a progress bar on the taskbar icon and play / skip buttons on the taskbar preview. Durations are in Settings.
 - **Tasks**: a short list per day. Unfinished tasks carry into today. The target button on a task starts a focus timer for it.
 - **Study plans**: a day-by-day plan toward an exam or another milestone, such as a report. Each day has a job (or a checklist), links to your notes and a session timer with its own steps. Today's job shows in the right panel, and each plan counts down to its milestone. Tick days or items off, drag days to other dates, and collapse a plan in the right panel when you don't need it. Planner ships with no plans; see [Your own plans](#your-own-plans).
@@ -64,6 +64,7 @@ Hover a card and drag the handle at its top to move it. With the keyboard, focus
 | --- | --- |
 | T | Today |
 | D / W / M | Day, week, month |
+| F | Fit the whole day on screen, or scroll |
 | ← / → | Previous / next |
 | N | New event |
 | H | Daily health |

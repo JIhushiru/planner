@@ -39,6 +39,8 @@ function openSettings(tab = 'general') {
       row('Week starts on', selectBox(S.weekStart, [[0, 'Sunday'], [1, 'Monday'], [6, 'Saturday']], v => apply(s => { s.weekStart = +v; }))),
       row('Time format', selectBox(S.time12h ? '12' : '24', [['12', '12-hour (9:30 PM)'], ['24', '24-hour (21:30)']], v => apply(s => { s.time12h = v === '12'; }))),
       row('Show weekends in week view', toggleSwitch(S.showWeekends, v => apply(s => { s.showWeekends = v; }))),
+      row('Day and week hours', selectBox(S.fitDay ? 'fit' : 'scroll', [['fit', 'Fit 12 AM to midnight'], ['scroll', 'Scroll (Ctrl + wheel zooms)']], v => apply(s => { s.fitDay = v === 'fit'; App.resetScroll = true; })),
+        'Fit shows the whole day at once. Press F to switch.'),
       row('Day view opens at', selectBox(S.dayStart, Array.from({ length: 13 }, (_, i) => [i, fmtHour(i)]), v => apply(s => { s.dayStart = +v; }, false)),
         'Used when today is not on screen.'),
       row('Default event length', selectBox(S.defaultDur, [[15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], v => apply(s => { s.defaultDur = +v; }, false))),
@@ -117,7 +119,11 @@ function openSettings(tab = 'general') {
         row('Keep running in the tray when closed', toggleSwitch(S.closeToTray, v => apply(s => { s.closeToTray = v; Host.post({ type: 'hostSettings', closeToTray: v }); }, false)),
           'Timers and reminders keep working. Quit from the tray icon.'),
         row('Start Planner with Windows', Host.native ? auto : h('span', { class: 'muted small' }, 'Available in the desktop app'), 'Starts quietly in the tray.'),
-        row('Event reminders', toggleSwitch(S.notifyEvents, v => apply(s => { s.notifyEvents = v; }, false)), 'Windows notifications before events that have a reminder.'),
+        row('Event reminders', toggleSwitch(S.notifyEvents, v => apply(s => { s.notifyEvents = v; scheduleRemindersSoon(); }, false)), 'Windows notifications before events that have a reminder.'),
+        row('Chime with reminders', h('span', { class: 'range-wrap' },
+          toggleSwitch(S.reminderChime, v => apply(s => { s.reminderChime = v; scheduleRemindersSoon(); }, false)),
+          h('button', { class: 'btn sm', onclick: () => Host.chime('reminder', S.pomo.volume) }, icon('play', 12), 'Test')),
+        'Event and study reminders play a sound, at the focus timer’s chime volume.'),
         h('div', { class: 'set-sep' }),
         row('Back up your planner', h('div', { class: 'btn-row' },
           h('button', { class: 'btn sm', onclick: () => exportData() }, icon('download', 14), 'Export…'),
@@ -191,7 +197,7 @@ async function applyImport(json, name) {
 
 function showShortcuts() {
   const keys = [
-    ['T', 'Go to today'], ['D / W / M', 'Day, week or month view'], ['← / →', 'Previous / next period'],
+    ['T', 'Go to today'], ['D / W / M', 'Day, week or month view'], ['F', 'Fit the whole day on screen, or scroll'], ['← / →', 'Previous / next period'],
     ['N', 'New event'], ['H', 'Daily health: medicines, water, workout, jogging weather'], ['P or Space', 'Start or pause the focus timer'], ['Ctrl + Z', 'Undo the last change'],
     ['Ctrl + ,', 'Settings'], ['[ / ]', 'Hide or show the side panels'], ['Ctrl + scroll', 'Zoom the day and week views'],
     ['Esc', 'Close a dialog or cancel a drag'], ['?', 'This list'],

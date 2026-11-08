@@ -2,7 +2,18 @@
 /* Day / week timeline, month grid, mini calendar and their drag interactions. */
 
 const SNAP = 15;
-const hourH = () => Store.d.settings.hourHeight;
+const FIT_MIN_H = 20;   // below this, "fit the whole day" gives up and scrolls
+let fitHourH = 0;       // px per hour that makes 24 hours fill the timeline (set while rendering)
+/** Pixels per hour: the saved Ctrl+wheel zoom, or the fitted height when the whole day is shown at once. */
+const hourH = () => (Store.d.settings.fitDay && fitHourH) || Store.d.settings.hourHeight;
+
+/** Switches the day and week views between "whole day on screen" and scrolling. */
+function toggleFitDay(on = !Store.d.settings.fitDay) {
+  Store.d.settings.fitDay = on;
+  Store.quiet();
+  App.resetScroll = true;
+  if (App.state.view === 'day' || App.state.view === 'week') App.renderMain();
+}
 
 function visibleDates() {
   const S = Store.d.settings, st = App.state;
@@ -48,7 +59,7 @@ async function changeOccurrence(occ, patch, label) {
 }
 
 // ── Timeline (day and week) ─────────────────────────────────────────────
-function renderTimeline(main) {
+function renderTimeline(main, refit = true) {
   const dates = visibleDates();
   const S = Store.d.settings, H = hourH();
   const today = todayYmd();
@@ -63,7 +74,12 @@ function renderTimeline(main) {
   const scroll = h('div', { class: 'tl-scroll' });
 
   // Sticky header: weekday names and all-day items.
-  const head = h('div', { class: 'tl-row tl-head' }, h('div', { class: 'tl-gutter' }),
+  const fitBtn = h('button', {
+    class: 'tl-fit' + (S.fitDay ? ' on' : ''), 'aria-pressed': String(!!S.fitDay),
+    title: S.fitDay ? 'Showing the whole day. Click to scroll instead (F)' : 'Fit the whole day, 12 AM to midnight (F)',
+    onclick: () => toggleFitDay(),
+  }, '24h');
+  const head = h('div', { class: 'tl-row tl-head' }, h('div', { class: 'tl-gutter tl-corner' }, fitBtn),
     dates.map(d => {
       const p = dayParts(d);
       return h('button', {
@@ -86,6 +102,19 @@ function renderTimeline(main) {
   scroll.append(sticky, body);
   root.append(scroll);
   main.replaceChildren(root);
+
+  if (S.fitDay) {
+    // Size the hours so 12 AM to midnight fills the space under the sticky header, then draw again at that size.
+    const avail = scroll.clientHeight - sticky.offsetHeight - 1;
+    const fit = Math.max(FIT_MIN_H, Math.floor(avail / 24 * 4) / 4);
+    if (refit && avail > 0 && Math.abs(fit - H) >= 0.25) {
+      fitHourH = fit;
+      App.resetScroll = keepScroll == null;
+      renderTimeline(main, false);
+      if (keepScroll != null) main.querySelector('.tl-scroll').scrollTop = keepScroll;
+      return;
+    }
+  }
 
   if (keepScroll != null) scroll.scrollTop = keepScroll;
   else {
@@ -322,9 +351,14 @@ function onTimelineWheel(e) {
   if (!e.ctrlKey) return;
   e.preventDefault();
   const scroller = e.currentTarget;
-  const H = hourH();
+  const H = hourH(), S = Store.d.settings;
   const next = clamp(Math.round(H * (e.deltaY < 0 ? 1.12 : 1 / 1.12)), 28, 160);
-  if (next === H) return;
+  if (S.fitDay) {
+    // The whole day is already on screen: zooming out does nothing, zooming in switches to scrolling.
+    if (e.deltaY >= 0) return;
+    S.fitDay = false;
+    toast('Zoomed in. Press F to fit the whole day again.');
+  } else if (next === H) return;
   const body = scroller.querySelector('.tl-body');
   const anchorMin = (e.clientY - body.getBoundingClientRect().top) / H * 60;
   const offset = e.clientY - scroller.getBoundingClientRect().top;

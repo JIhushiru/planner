@@ -72,6 +72,7 @@ try {
       await shot('08-session');
       await c.evaluate(`openPlanDay(planById('plan-exam'), planById('plan-exam').days[0])`); await shot('09-planday');
       await c.evaluate(`closeAllModals(); openSettings('pomodoro')`); await shot('10-settings');
+      await c.evaluate(`closeAllModals(); openSettings('app')`); await shot('10b-settings-app');
       await c.evaluate(`closeAllModals()`);
     },
   };
@@ -208,6 +209,11 @@ try {
     await c.evaluate(`window.__rem = []; Host.reminders = items => { window.__rem = items; };`);
     await c.evaluate(`Store.commit('e', d => d.events.push(normalizeEvent({ id: 'r1', title: 'Office hours', date: '2026-11-06', start: 16 * 60, dur: 60, reminder: 15, cat: 'c-class' })), { toast: false }); scheduleReminders();`);
     expect('event reminder 15 min before', await c.evaluate(`window.__rem.filter(r => r.title === 'Office hours').map(r => new Date(r.at).toTimeString().slice(0, 5))`), ['15:45']);
+    expect('event reminder chimes at the timer volume', await c.evaluate(`window.__rem.filter(r => r.title === 'Office hours').map(r => [r.sound, r.volume])`), [['reminder', 0.7]]);
+    expect('health reminders stay silent', await c.evaluate(`(() => { const hr = window.__rem.filter(r => /^(med|water|workout)/.test(r.key)); return hr.length > 0 && hr.every(r => r.sound === 'none'); })()`), true);
+    await c.evaluate(`Store.d.settings.reminderChime = false; scheduleReminders();`);
+    expect('reminder chime can be turned off', await c.evaluate(`window.__rem.filter(r => r.title === 'Office hours').map(r => r.sound)`), ['none']);
+    await c.evaluate(`Store.d.settings.reminderChime = true;`);
     await c.evaluate(`Store.commit('p', () => { planById('plan-exam').time = 19 * 60; }, { toast: false }); scheduleReminders();`);
     expect('timed plan reminds 10 min before each unticked day', await c.evaluate(`window.__rem.filter(r => r.title.startsWith('Course A')).map(r => [r.title, new Date(r.at).toTimeString().slice(0, 5)])`),
       [['Course A · Chapter 1 statements', '18:50'], ['Course A · Chapter 1 proofs', '18:50'], ['Course A · Chapter 2 statements', '18:50']]);
@@ -218,6 +224,65 @@ try {
     await c.evaluate(`clearToasts(); Store.commit('First change', d => { d.events.push(normalizeEvent({ id: 'u1', title: 'U1', date: '2026-11-06', start: 600, dur: 30 })); }); Store.commit('Second change', d => { d.events.push(normalizeEvent({ id: 'u2', title: 'U2', date: '2026-11-06', start: 700, dur: 30 })); });`);
     await c.evaluate(`[...document.querySelectorAll('.toast')].find(t => t.textContent.includes('First change')).querySelector('button').click()`);
     expect('stale toast Undo refuses and keeps both changes', await c.evaluate(`['u1', 'u2'].map(id => Store.d.events.some(e => e.id === id))`), [true, true]);
+  };
+
+  // "Fit the whole day": 12 AM to midnight on screen without scrolling, in day and week views.
+  steps.fit = async () => {
+    await c.evaluate(`Store.commit('shifts', d => {
+      d.events.push(normalizeEvent({ id: 'f1', title: 'Early shift', date: '2026-11-06', start: 60, dur: 60, cat: 'c-work', reminder: 0 }));
+      d.events.push(normalizeEvent({ id: 'f2', title: 'Long shift', date: '2026-11-05', start: 15 * 60, dur: 300, cat: 'c-work', reminder: 0 }));
+      d.events.push(normalizeEvent({ id: 'f3', title: 'Late shift', date: '2026-11-07', start: 23 * 60, dur: 60, cat: 'c-work', reminder: 0 }));
+    }, { toast: false }); clearToasts(); App.state.date = '2026-11-06'; App.setView('week')`);
+    const layout = () => c.evaluate(`(() => {
+      const sc = document.querySelector('.tl-scroll'), b = sc.getBoundingClientRect();
+      const inView = t => { const el = [...document.querySelectorAll('#main .ev')].find(x => x.textContent.includes(t)); if (!el) return null; const r = el.getBoundingClientRect(); return r.top >= b.top - 1 && r.bottom <= b.bottom + 1; };
+      return { fit: Store.d.settings.fitDay, scrolls: sc.scrollHeight > sc.clientHeight + 1, H: hourH(), pressed: document.querySelector('.tl-fit').getAttribute('aria-pressed'),
+        early: inView('Early shift'), long: inView('Long shift'), late: inView('Late shift') };
+    })()`);
+    let L = await layout();
+    expect('scrolls by default', [L.fit, L.scrolls, L.H, L.pressed], [false, true, 48, 'false']);
+    await c.evaluate(`document.querySelector('.tl-fit').click()`);
+    await sleep(200);
+    L = await layout();
+    expect('24h button fits 12 AM to midnight in the week view', [L.fit, L.scrolls, L.pressed, L.early, L.long, L.late], [true, false, 'true', true, true, true]);
+    expect('fitted hours stay readable', L.H >= 20 && L.H < 48, true);
+    await shot('fit-week');
+    await c.evaluate(`App.setView('day')`);
+    await sleep(200);
+    L = await layout();
+    expect('day view fits too', [L.scrolls, L.early], [false, true]);
+    await shot('fit-day');
+    await c.evaluate(`App.setView('week')`);
+    await sleep(200);
+    L = await layout(); // the week's all-day lane differs from the day's, so its fitted hour height does too
+
+    // Click-dragging uses the fitted hour height: 10 AM to 12 PM on Wednesday.
+    const r = await rectOf(`document.querySelector('.tl-col[data-date="2026-11-04"]')`);
+    await drag(r.x + r.w / 2, r.y + 10 * L.H + 2, r.x + r.w / 2, r.y + 12 * L.H - 2);
+    expect('dragging in fit mode picks the right times', await c.evaluate(`({ start: document.querySelectorAll('.time-input')[0]?.value, end: document.querySelectorAll('.time-input')[1]?.value })`), { start: '10:00 AM', end: '12:00 PM' });
+    await c.evaluate(`closeAllModals()`);
+
+    // A shorter window refits.
+    await c.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 760, deviceScaleFactor: 1, mobile: false });
+    await sleep(500);
+    const L2 = await layout();
+    expect('a shorter window refits without scrolling', [L2.scrolls, L2.late, L2.H < L.H], [false, true, true]);
+    await c.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await sleep(500);
+
+    // F switches back to scrolling at the saved zoom; Ctrl+wheel up in fit mode switches to scrolling, zoomed in.
+    await key('f', 'KeyF', 70);
+    L = await layout();
+    expect('F goes back to scrolling', [L.fit, L.scrolls, L.H], [false, true, 48]);
+    await key('f', 'KeyF', 70);
+    const fitH = await c.evaluate('hourH()');
+    const sc = await rectOf(`document.querySelector('.tl-scroll')`);
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: sc.x + sc.w / 2, y: sc.y + sc.h / 2, deltaX: 0, deltaY: 100, modifiers: 2 });
+    await sleep(200);
+    expect('Ctrl+wheel down in fit mode changes nothing', [await c.evaluate('Store.d.settings.fitDay'), await c.evaluate('hourH()')], [true, fitH]);
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: sc.x + sc.w / 2, y: sc.y + sc.h / 2, deltaX: 0, deltaY: -100, modifiers: 2 });
+    await sleep(200);
+    expect('Ctrl+wheel up leaves fit mode, one step bigger', [await c.evaluate('Store.d.settings.fitDay'), await c.evaluate('hourH()')], [false, Math.max(28, Math.round(fitH * 1.12))]);
   };
 
   steps.checklist = async () => {

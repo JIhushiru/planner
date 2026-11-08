@@ -260,6 +260,13 @@ input, textarea { user-select: text; }
 .tl-dayhead.is-today .dw { color: var(--accent); }
 .tl-dayhead.is-today .dn, .tl-dayhead.is-today:hover .dn { background: var(--accent); color: var(--accent-ink); }
 .tl-one .tl-dayhead { align-items: flex-start; padding-left: 12px; }
+.tl-corner { display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 6px 9px 0; }
+.tl-fit {
+  border: 1px solid var(--border); background: none; color: var(--text-3); border-radius: 6px;
+  font: 600 10.5px/1 var(--font); padding: 4px 5px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.tl-fit:hover { background: var(--hover); color: var(--text); }
+.tl-fit.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
 .tl-allday { border-top: 1px solid var(--line); }
 .tl-allday-label { font-size: 10.5px; color: var(--text-3); text-align: right; padding: 7px 8px 0 0; }
 .tl-allday-cell { border-left: 1px solid var(--line); padding: 3px 3px 4px; display: flex; flex-direction: column; gap: 2px; min-height: 28px; min-width: 0; }

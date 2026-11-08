@@ -23,10 +23,12 @@ function defaultSettings() {
     time12h: detect12h(),
     dayStart: 7,              // hour the day and week views scroll to
     hourHeight: 48,           // px per hour in the timeline (Ctrl+wheel to zoom)
+    fitDay: false,            // day and week views size the hours so 12 AM to midnight fits without scrolling
     defaultDur: 60,
     defaultReminder: 10,
     showWeekends: true,
     notifyEvents: true,
+    reminderChime: true,      // event and study reminders also play a chime
     closeToTray: true,
     zoom: 1,
     view: 'week',

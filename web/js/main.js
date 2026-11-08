@@ -39,7 +39,10 @@ const App = {
     document.addEventListener('click', onDocClick);
     window.addEventListener('dragover', e => e.preventDefault());
     window.addEventListener('drop', e => e.preventDefault());
-    window.addEventListener('resize', debounce(() => { if (this.state.view === 'month') this.renderMain(); }, 120));
+    window.addEventListener('resize', debounce(() => {
+      const v = this.state.view;
+      if (v === 'month' || (Store.d.settings.fitDay && (v === 'day' || v === 'week'))) this.renderMain();
+    }, 120));
     setInterval(() => this.minuteTick(false), 20000);
 
     Host.post({ type: 'hostSettings', closeToTray: S.closeToTray });
@@ -216,6 +219,8 @@ function scheduleReminders() {
   const S = Store.d.settings;
   const now = Date.now(), today = todayYmd();
   const items = [];
+  // Calendar reminders chime (at the timer's chime volume); health nudges stay silent.
+  const sound = S.reminderChime ? 'reminder' : 'none', volume = S.pomo.volume;
   if (S.notifyEvents) {
     for (const o of occurrences(addDays(today, -1), addDays(today, 2))) {
       let at, body;
@@ -235,7 +240,7 @@ function scheduleReminders() {
         body = `${fmtTime(o.start)} study session (${planDur(o.plan, o.day)} min): ${o.day.title}`;
       } else continue; // workouts are reminded by the health reminders below
       if (at < now - 60000) continue;
-      items.push({ key: `${o.key}|${at}`, at, title: o.label || o.title || '(No title)', body, sound: 'none' });
+      items.push({ key: `${o.key}|${at}`, at, title: o.label || o.title || '(No title)', body, sound, volume });
     }
   }
   // Medicines, water and the workout have their own switches on the Health page.
@@ -262,6 +267,7 @@ function onKeyDown(e) {
     case 'd': case 'D': App.setView('day'); break;
     case 'w': case 'W': App.setView('week'); break;
     case 'm': case 'M': App.setView('month'); break;
+    case 'f': case 'F': toggleFitDay(); break;
     case 'ArrowLeft': App.go(-1); break;
     case 'ArrowRight': App.go(1); break;
     case 'n': case 'N': case 'c': case 'C': openEditor({ draft: {} }); break;
